@@ -280,13 +280,14 @@ function(Symbol="ISP.MI",Observation_Days="300",Buy_Date="2020-10-09",Buy_price=
                       <div class="accordion-item">
                       <h2 class="accordion-header" id="headingThree">
                       <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                      ', "<h4>" , Symbol , " Overview [ " , win_equity ," % ]</h4><br>",'<script>document.getElementById("mysymbol").value ="',Symbol,'"</script>',
+                      ', Symbol , " Overview [ " , win_equity ," % ]<br>",'<script>document.getElementById("mysymbol").value ="',Symbol,'"</script>',
         
                     '</button>
                       </h2>
                       <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
                       <div class="accordion-body">',
-                        "<h4>" , Symbol , " Overview [ " , win_equity ," % ]</h4><br>",'<script>document.getElementById("mysymbol").value ="',Symbol,'"</script>',
+                        "<h4>" , Symbol , " Overview [ " , win_equity ," % ]</h4> <br>",
+                        '<script>document.getElementById("mysymbol").value ="',Symbol,'"</script>',
                         '<script>document.getElementById("mydate").value ="',Buy_Date,'"; </script>',
                         '<script>document.getElementById("myprice").value ="',Buy_price,'"</script>',
                         '<script>document.getElementById("mydays").value =',Observation_Days,'</script>',
