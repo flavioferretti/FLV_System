@@ -165,59 +165,11 @@ function(Symbol="ISP.MI",Observation_Days="300",Buy_Date="2020-10-09",Buy_price=
   html_body_img04 <- paste(readLines("performance_summary_buyhold.txt"), collapse="")
   html_body_img_close <- '">  '
   html_foot <- '<script src="http://192.168.4.1/~flavio/bootstrap/js/bootstrap.min.js"></script></body></html>'
-  
-  
-  
-  
-  html_nav <- paste('<script src="http://localhost/R/PlumberAPI/plumbermain.js"> </script>',
-                    '<div  class="container form-control col-12 bg-white"><p class="h4"> FLV API 0.1.0</p></div>',
-                 
-                    '<div  class="container form-control col-12 bg-light">',
-                    '  <div class="row"> ',
-                    '    <div class="col-12">',
-                    '      <button class="btn btn-secondary" onclick=ispmi();>ISP.MI</button>',
-                    '      <button class="btn btn-secondary" onclick=apple();>AAPL</button>  ' ,
-                    '      <button class="btn btn-secondary" onclick=amzn();>AMZN</button>  ' ,
-                    '      <button class="btn btn-secondary" onclick=googl();>GOOGL</button>  ', 
-                    '      <button class="btn btn-secondary" onclick=nflx();>NFLX</button> ' ,
-                    '      <button class="btn btn-secondary" onclick=gold();>GOLD</button> ' ,
-                    '      <button class="btn btn-secondary" onclick=tsla();>TSLA</button>',
-                    '    </div>',
-                    '  </div>',
-                    '</div>',
-                    
-                    '<div  class="container form-control col-12 bg-light">',
-                    '  <div class="row"> ',
-                    '    <div class="col-3">',
-                    '      <label for="mysymbol">Symbol </label> <input class="form-control" type=text id=mysymbol > ',
-                    '    </div>',
-                    '    <div class="col-3">',
-                    '      <label for="mydays">Observation days </label> <input class="form-control" type="number" id="mydays" name="mydays" min="5" max="50000" > ',
-                    '    </div>',
-                    '    <div class="col-3">',
-                    '      <label for="mydate">Buy date </label><input class="form-control" type="text" id="mydate" name="mydate" >',
-                    '    </div>',
-                    '    <div class="col-3">',
-                    '      <label for="myprice">Buy price </label> <input class="form-control" type=myprice id=myprice > ',
-                    '    </div>',
-                    '  </div>',
-                    '  <div class="row"> ',
-                    '    <div class="col-3">',
-                    '      <label for="mywidth">Chart width </label> <input class="form-control" type="number" id="mywidth" name="mywidth" min="200" max="5000" value="1200"> ',
-                    '    </div>',
-                    '    <div class="col-3">',
-                    '      <label for="myheight">Chart height </label> <input class="form-control" type="number" id="myheight" name="myheight" min="200" max="5000" value="500"> ',
-                    '    </div>',
-                    '    <div class="col-3">',
-                    '      <label for="QueryButton">Run custom query </label><br><button id="QueryButton" class="btn btn-warning " onclick=MyCustom();>Query</button> ' ,
-                    '    </div>',
-                    '  </div>',
-                    '</div>' )
-  
+   
   paste(html_head, 
-        html_nav,
+        '<div  class="container form-control col-12 bg-white"><p class="h4"> FLV API 0.1.0</p></div>',
         '<div  class="container form-control col-12 bg-light">',
-        
+        '<script src="http://localhost/R/PlumberAPI/plumbermain.js"> </script>',
         '<div class="accordion" id="accordionExample">
                       <div class="accordion-item">
                       <h2 class="accordion-header" id="headingOne">
