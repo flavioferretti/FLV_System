@@ -2,7 +2,7 @@ options(shiny.port = 8080)
 options(shiny.host = "0.0.0.0")
 
 library(RMariaDB)
-library(quantmod)
+library(quantstrat)
 library(dplyr)
 library(shiny)
 
@@ -19,8 +19,53 @@ pw = '27182818'
 my_query = "show tables"
 list_of_symbols <- ReadParamOnMyDB(my_query, user, pw, db, host, "")
 #
+################################################################################
+# Could put these in global.R, these global variables are "hard coded"  ----------------
+min_date_barrier <- "1980-01-01"
+max_date_barrier <- as.character(Sys.Date())
+stock_universe <- c("AAPL", "CAT", "BB")
+#stock_universe <- list_of_symbols
 
-library(shiny)
+# These variables won't change when the app launches, so hard code them too:
+
+Sys.setenv(TZ = "UTC")
+currency('USD')
+stock(stock_universe, currency = "USD", multiplier = 1)
+
+portfolio.st <- account.st <- strategy.st <- "my.first"
+
+# In here, store the original market data which contains your full range of possible values for the market data:
+# Don't keep requesting data frequently otherwise you won't be able to download the data temporarily.
+if (!exists("rawdata")) {
+    rawdata <- new.env()
+    assign("rawdata", rawdata, envir = .GlobalEnv)
+    
+    lapply(stock_universe, function(sym) {
+        # if (exists(sym, envir = rawdata)) {
+        #     message("Have already downloaded data for ", sym)
+        #     return()
+        # } else {
+        getSymbols(stock_universe,
+                  env = rawdata,  # important to specify environment
+                  from = min_date_barrier,
+                  to = max_date_barrier,
+                  adjust = T, auto.assign = TRUE)
+        # getSymbols.MySQL(
+        #     stock_universe,
+        #     env = globalenv(),
+        #     user = user,
+        #     password = pw,
+        #     dbname = db,
+        #     port = 3306,
+        #     host = host,
+        #     auto.assign = FALSE
+        # )
+        #}
+        return()
+    })
+    
+}
+################################################################################
 
 # Define UI for application that draws a histogram
 
@@ -160,8 +205,30 @@ ui <- navbarPage(
                                    plotOutput("hist")
                                ))
                  )
-             )),
-    tabPanel('Length menu',        DT::dataTableOutput('ex2')),
+             )),###############################################################
+    ####################### BT ################################################
+    tabPanel('Backtest',        
+             fluidPage(
+                 sidebarLayout(
+                     sidebarPanel(
+                         selectInput(
+                             "stock", label = "Choose stock", choices = stock_universe
+                         ),
+                         
+                         dateInput("start_date", "Choose start date",
+                                   value = "2018-02-03"),
+                         dateInput("end_date", "Choose end date",
+                                   value = as.character(Sys.Date())),
+                         selectInput("init_equity", "starting
+    equity", choices = c(10000, 50000))
+                     ),
+                     
+                     
+                     mainPanel(
+                         plotOutput("plot_backtest"),
+                         verbatimTextOutput("results")
+                     )
+                 ))),
     tabPanel('No pagination',      DT::dataTableOutput('ex3')),
     tabPanel('No filtering',       DT::dataTableOutput('ex4')),
     tabPanel('Function callback',  DT::dataTableOutput('ex5'))
@@ -175,7 +242,7 @@ ui <- navbarPage(
 server <- function(input, output, session) {
     # MySQL world ----------------------------------------------------------
     dataInput <- reactive({
-        if (input$my_period == "none") {
+        if (input$my_period == "none" ) {
             getSymbols.MySQL(
                 input$symbol,
                 env = globalenv(),
@@ -300,7 +367,146 @@ server <- function(input, output, session) {
         }
         
     })
-}
+    
+    backtest_setup <- reactive({
+        
+        # need these input variables in this reactive to avoid bugs in the app when you change the time range:
+        
+        input$start_date
+        input$end_date
+        rm.strat(portfolio.st, silent = FALSE)
+        initPortf(name = portfolio.st,
+                  symbols = input$stock,        #------------------------ correct way to apply the "stock" input
+                  initDate = "2000-01-01")
+        initAcct(name = account.st,
+                 portfolios = portfolio.st,
+                 initDate = "2000-01-01",
+                 initEq = as.numeric(input$init_equity)) # convert equity to numeric from string
+        initOrders(portfolio = portfolio.st,
+                   symbols = input$stock,  # ----------------------------------
+                   initDate = "2000-01-01"
+        )
+        strategy(strategy.st, store = T)
+        
+        
+        add.indicator(strategy = strategy.st,
+                      name = "SMA",
+                      arguments = list(x =
+                                           quote(Cl(mktdata)),
+                                       n = 10),
+                      label = "nFast")
+        
+        add.indicator(strategy = strategy.st,
+                      name = "SMA",
+                      arguments = list(x =
+                                           quote(Cl(mktdata)),
+                                       n = 30),
+                      label = "nSlow")
+        
+        add.signal(strategy = strategy.st,
+                   name="sigCrossover",
+                   arguments = list(columns = c("nFast", "nSlow"),
+                                    relationship = "gte"),
+                   label = "long")
+        add.signal(strategy = strategy.st,
+                   name="sigCrossover",
+                   arguments = list(columns = c("nFast", "nSlow"),
+                                    relationship = "lt"),
+                   label = "short")
+        add.rule(strategy = strategy.st,
+                 name = "ruleSignal",
+                 arguments = list(sigcol = "long",
+                                  sigval = TRUE,
+                                  orderqty = 100,
+                                  ordertype = "stoplimit",
+                                  orderside = "long",
+                                  threshold = 0.0005,
+                                  prefer = "High",
+                                  TxnFees = -10,
+                                  replace = FALSE),
+                 type = "enter",
+                 label = "EnterLONG")
+        add.rule(strategy.st,
+                 name = "ruleSignal",
+                 arguments = list(sigcol = "short",
+                                  sigval = TRUE,
+                                  orderqty = -100,
+                                  ordertype = "stoplimit",
+                                  threshold = -0.005,
+                                  orderside = "short",
+                                  replace = FALSE,
+                                  TxnFees = -10,
+                                  prefer = "Low"),
+                 type = "enter",
+                 label = "EnterSHORT")
+        add.rule(strategy.st,
+                 name = "ruleSignal",
+                 arguments = list(sigcol = "short",
+                                  sigval = TRUE,
+                                  orderside = "long",
+                                  ordertype = "market",
+                                  orderqty = "all",
+                                  TxnFees = -10,
+                                  replace = TRUE),
+                 type = "exit",
+                 label = "Exit2SHORT")
+        add.rule(strategy.st,
+                 name = "ruleSignal",
+                 arguments = list(sigcol = "long",
+                                  sigval = TRUE,
+                                  orderside = "short",
+                                  ordertype = "market",
+                                  orderqty = "all",
+                                  TxnFees = -10,
+                                  replace = TRUE),
+                 type = "exit",
+                 label = "Exit2LONG")
+        
+    })
+    
+    V <- reactive({
+        
+        validate(need(input$start_date >= as.Date(min_date_barrier), "start date cannot be less than hard coded min_date_barrier"))
+        validate(need(input$end_date <= as.Date(max_date_barrier), "end date cannot be greater than  hard coded max_date_barrier"))
+        validate(need(as.Date(input$start_date) < as.Date(input$end_date), "start date must be less than end date."))
+        # assign symbol market data to the global environment for the range of dates you want:
+        time_rng <- paste0(input$start_date, "/", input$end_date)
+        mdata <- get(input$stock, envir = rawdata)
+        mdata <- mdata[time_rng]
+        
+        validate(need(NROW(mdata) > 0, "no data available, choose an appropriate time range"))
+        
+        mdata
+    })
+    
+    backtest_results <- reactive({
+        
+        backtest_setup()
+        mdata <- V()
+        assign(input$stock, mdata, envir = .GlobalEnv)
+        # not supplying mktdata as a parameter, so look in global environment for objects with the symbol names (which will exist because V assigns to .GlobalEnv):
+        applyStrategy(strategy.st, portfolios = portfolio.st)
+        # alternatively you could pass in the data directly to apply strategy if you're just using one symbol of data in the applyStrategy call, instead of having applyStrategy directly search in the .GlobalEnv for the symbol name
+        #applyStrategy(strategy.st, portfolios = portfolio.st, mktdata = mdata)
+        updatePortf(portfolio.st)
+        updateAcct(account.st)
+        updateEndEq(account.st)
+        
+    })
+    
+    output$plot_backtest = renderPlot({
+        backtest_results()
+        chart.Posn(portfolio.st, Symbol = input$stock)
+    })
+    
+    output$results = renderPrint({
+        backtest_setup()
+        tmpdata <- V() # need this here so that any changes to the inputs will reprint the trade stats table
+        print(tradeStats(portfolio.st))
+    })
+
+    
+    }
 
 
 # Run the application
